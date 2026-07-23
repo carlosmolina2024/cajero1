@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banco del Sol - Cajero Automático</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+    body {
+      background-color: #0b1329;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+    .atm-box {
+      background: #1e293b;
+      border: 6px solid #334155;
+      border-radius: 28px;
+      padding: 40px;
+      width: 720px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      text-align: center;
+      position: relative;
+    }
+    .bank-header {
+      border-bottom: 3px solid #38bdf8;
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+    }
+    .bank-header h2 { color: #38bdf8; margin: 0; font-size: 2.2em; letter-spacing: 2px; }
+    .bank-header h4 { color: #94a3b8; margin: 8px 0 0 0; font-weight: normal; font-size: 1.2em; }
+    
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ESTILOS DE PANTALLA STANDBY (IMAGEN) */
+    #screen-standby { cursor: pointer; }
+    .welcome-img {
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 16px;
+      border: 3px solid #38bdf8;
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.25);
+    }
+    .press-key-text {
+      margin-top: 25px;
+      font-size: 1.5em;
+      color: #38bdf8;
+      font-weight: bold;
+      animation: blinker 1.5s linear infinite;
+    }
+    @keyframes blinker { 50% { opacity: 0; } }
+
+    .input-group { margin-bottom: 25px; text-align: left; }
+    label { display: block; font-size: 1.2em; margin-bottom: 8px; color: #94a3b8; font-weight: bold; }
+    input {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.8em;
+      border-radius: 12px;
+      border: 2px solid #475569;
+      background: #0f172a;
+      color: #38bdf8;
+      text-align: center;
+      font-weight: bold;
+    }
+    input:focus { outline: 3px solid #38bdf8; }
+
+    .grid-menu {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 25px;
+    }
+
+    .btn-action {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 22px;
+      border-radius: 12px;
+      font-size: 1.4em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    .btn-action:hover { background: #0369a1; }
+    .btn-action:active { transform: scale(0.98); }
+    .btn-action:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .btn-danger { background: #be123c; }
+    .btn-danger:hover { background: #9f1239; }
+
+    .user-info, .display-box {
+      background: #0f172a;
+      padding: 25px;
+      border-radius: 14px;
+      text-align: left;
+      margin-bottom: 25px;
+      border: 2px solid #334155;
+    }
+    .user-info p, .display-box p { margin: 10px 0; font-size: 1.3em; color: #cbd5e1; }
+    .user-info span, .display-box span { color: #38bdf8; font-weight: bold; }
+
+    .saldo-destacado {
+      font-size: 2.8em !important;
+      color: #4ade80 !important;
+      text-align: center;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .status-msg { margin-top: 20px; font-size: 1.3em; min-height: 30px; font-weight: bold; }
+    .error { color: #f87171; }
+    .loading { color: #facc15; }
+    .success { color: #4ade80; }
+    
+    .cash-dispenser {
+      margin-top: 25px;
+      background: #020617;
+      border: 3px dashed #475569;
+      padding: 20px;
+      border-radius: 12px;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 1.4em;
+    }
+
+    /* ESTILOS DE PANTALLA GRACIAS */
+    .thanks-box { padding: 40px 15px; }
+    .thanks-box h2 { color: #4ade80; font-size: 2.8em; margin-bottom: 15px; }
+    .thanks-box p { color: #94a3b8; font-size: 1.4em; margin: 10px 0; }
+    .timer-text { margin-top: 25px; font-size: 1.2em; color: #64748b; }
+  </style>
+</head>
+<body>
+
+  <div class="atm-box">
+    <div class="bank-header">
+      <h2>BANCO DEL SOL</h2>
+      <h4>SUCURSAL LA RIOJA</h4>
+    </div>
+
+    <!-- PANTALLA 0: STANDBY (IMAGEN INICIAL) -->
+    <div id="screen-standby" class="screen active" onclick="activarCajero()">
+      <img src="https://i.postimg.cc/qMvXg0tn/bancodelsol.jpg" alt="Banco del Sol" class="welcome-img">
+      <div class="press-key-text">PRESIONE CUALQUIER TECLA PARA COMENZAR</div>
+    </div>
+
+    <!-- PANTALLA 1: INGRESO -->
+    <div id="screen-login" class="screen">
+      <div class="input-group">
+        <label for="legajo">Nº DE LEGAJO:</label>
+        <input type="text" id="legajo" placeholder="Ingrese Legajo" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <label for="clave">CLAVE (PIN):</label>
+        <input type="password" id="clave" maxlength="8" placeholder="****" autocomplete="off">
+      </div>
+
+      <div id="msg-login" class="status-msg"></div>
+
+      <button class="btn-action" onclick="iniciarSesion()">Ingresar [ENTER]</button>
+    </div>
+
+    <!-- PANTALLA 2: MENÚ PRINCIPAL -->
+    <div id="screen-menu" class="screen">
+      <div class="user-info">
+        <p>Titular: <span id="user-nombre">-</span></p>
+        <p>Legajo: <span id="user-legajo">-</span> | CUIL: <span id="user-cuil">-</span></p>
+      </div>
+
+      <div class="grid-menu">
+        <button class="btn-action" onclick="mostrarSaldo()">Ver Saldo</button>
+        <button class="btn-action" onclick="prepararExtraccion()">Extracciones</button>
+        <button class="btn-action" disabled>Depósitos (Inactivo)</button>
+        <button class="btn-action btn-danger" onclick="mostrarMuchasGracias()">Finalizar</button>
+      </div>
+    </div>
+
+    <!-- PANTALLA 3: SALDO -->
+    <div id="screen-saldo" class="screen">
+      <div class="display-box">
+        <p style="text-align: center;">SU SALDO DISPONIBLE ES:</p>
+        <span id="saldo-monto" class="saldo-destacado">$0.00</span>
+      </div>
+      <button class="btn-action" onclick="volverMenu()">Volver al Menú</button>
+    </div>
+
+    <!-- PANTALLA 4: EXTRACCIÓN -->
+    <div id="screen-extraer" class="screen">
+      <div class="display-box">
+        <p>Saldo disponible: <span id="ext-saldo-dispo">$0.00</span></p>
+      </div>
+      <div class="input-group">
+        <label for="monto-extraer">MONTO A RETIRAR ($):</label>
+        <input type="number" id="monto-extraer" placeholder="Ej: 5000" step="1000">
+      </div>
+
+      <div id="msg-extraer" class="status-msg"></div>
+
+      <button class="btn-action" id="btn-confirmar-ext" onclick="procesarExtraccion()">Confirmar Extracción</button>
+      <button class="btn-action btn-danger" style="margin-top: 15px;" onclick="volverMenu()">Cancelar</button>
+    </div>
+
+    <!-- PANTALLA 5: DISPENSANDO -->
+    <div id="screen-dispensando" class="screen">
+      <h2 style="font-size: 1.8em; color: #38bdf8;">PROCESANDO SOLICITUD...</h2>
+      <div class="cash-dispenser" id="cash-anim">
+        [=== CONTANDO BILLETES ===]
+      </div>
+      <div id="msg-dispensando" class="status-msg success"></div>
+      <button class="btn-action" style="margin-top: 20px;" onclick="volverMenu()">Realizar otra operación</button>
+      <button class="btn-action btn-danger" style="margin-top: 15px;" onclick="mostrarMuchasGracias()">Finalizar y Salir</button>
+    </div>
+
+    <!-- PANTALLA 6: MUCHAS GRACIAS -->
+    <div id="screen-thanks" class="screen">
+      <div class="thanks-box">
+        <h2>¡MUCHAS GRACIAS!</h2>
+        <p>Gracias por utilizar los servicios de <strong>Banco del Sol</strong>.</p>
+        <p>No olvide retirar su dinero y comprobante.</p>
+        <div class="timer-text">Reiniciando en <span id="countdown">5</span> segundos...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzgDsltPufTyiHduyAtXBowAT7oxLz0F-CO8VXiv6Xb5AFbHdCTqCK7grzjhsZ430IE/exec";
+
+    // Audios cargados externamente
+    const audioTecla = new Audio("https://raw.githack.com/carlosmolina2024/musica-mp3/main/beepcorto1.mp3");
+    const audioDinero = new Audio("https://raw.githack.com/carlosmolina2024/musica-mp3/main/contandodinero.mp3");
+
+    let usuarioActual = null;
+    let timerGracias = null;
+
+    const inputLegajo = document.getElementById('legajo');
+    const inputClave = document.getElementById('clave');
+
+    function reproducirSonidoTecla() {
+      const sonido = audioTecla.cloneNode();
+      sonido.play().catch(() => {});
+    }
+
+    // Listener global para reproducir sonido al hacer clic en cualquier botón interactivo
+    document.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+        reproducirSonidoTecla();
+      }
+    });
+
+    // Manejo de teclado
+    document.addEventListener('keydown', (e) => {
+      reproducirSonidoTecla();
+
+      if (document.getElementById('screen-standby').classList.contains('active')) {
+        activarCajero();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        if (document.activeElement === inputLegajo && inputLegajo.value.trim() !== '') {
+          inputClave.focus();
+        } else if (document.getElementById('screen-login').classList.contains('active')) {
+          iniciarSesion();
+        }
+      }
+      if (e.key === 'Home' || e.key === 'Escape') {
+        mostrarMuchasGracias();
+      }
+    });
+
+    function activarCajero() {
+      mostrarPantalla('screen-login');
+      inputLegajo.focus();
+    }
+
+    async function iniciarSesion() {
+      const legajo = inputLegajo.value.trim();
+      const clave = inputClave.value.trim();
+
+      if (!legajo || !clave) {
+        showMsg("msg-login", "Ingrese Legajo y Clave", "error");
+        return;
+      }
+
+      showMsg("msg-login", "Validando con Banco del Sol...", "loading");
+
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=login&legajo=${encodeURIComponent(legajo)}&clave=${encodeURIComponent(clave)}`);
+        const data = await res.json();
+
+        if (data.status === "success") {
+          usuarioActual = data.usuario;
+          showMsg("msg-login", "", "");
+          mostrarPantalla('screen-menu');
+          
+          document.getElementById('user-nombre').textContent = `${usuarioActual.apellido}, ${usuarioActual.nombre}`;
+          document.getElementById('user-cuil').textContent = usuarioActual.cuil;
+          document.getElementById('user-legajo').textContent = usuarioActual.legajo;
+        } else {
+          showMsg("msg-login", data.message || "Datos incorrectos", "error");
+        }
+      } catch (err) {
+        showMsg("msg-login", "Error al conectar con la sucursal", "error");
+      }
+    }
+
+    function mostrarSaldo() {
+      document.getElementById('saldo-monto').textContent = `$ ${parseFloat(usuarioActual.saldo).toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      mostrarPantalla('screen-saldo');
+    }
+
+    function prepararExtraccion() {
+      document.getElementById('ext-saldo-dispo').textContent = `$ ${parseFloat(usuarioActual.saldo).toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('monto-extraer').value = '';
+      showMsg('msg-extraer', '', '');
+      mostrarPantalla('screen-extraer');
+    }
+
+    async function procesarExtraccion() {
+      const montoInput = document.getElementById('monto-extraer');
+      const monto = parseFloat(montoInput.value);
+
+      if (isNaN(monto) || monto <= 0) {
+        showMsg('msg-extraer', 'Ingrese un monto válido', 'error');
+        return;
+      }
+
+      if (monto > usuarioActual.saldo) {
+        showMsg('msg-extraer', 'Fondos insuficientes en la cuenta', 'error');
+        return;
+      }
+
+      showMsg('msg-extraer', 'Procesando transacción...', 'loading');
+
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=extraer&legajo=${encodeURIComponent(usuarioActual.legajo)}&monto=${monto}`);
+        const data = await res.json();
+
+        if (data.status === "success") {
+          usuarioActual.saldo = data.nuevoSaldo;
+          
+          mostrarPantalla('screen-dispensando');
+          reproducirSonidoDinero();
+          
+          document.getElementById('msg-dispensando').textContent = `¡RETIRE SU DINERO! Extracción de $${monto.toLocaleString('es-AR')} realizada.`;
+        } else {
+          showMsg('msg-extraer', data.message || "Error al procesar", 'error');
+        }
+      } catch (err) {
+        showMsg('msg-extraer', "Error de conexión al extraer", 'error');
+      }
+    }
+
+    function reproducirSonidoDinero() {
+      audioDinero.currentTime = 0;
+      audioDinero.play().catch(() => {});
+    }
+
+    function volverMenu() {
+      mostrarPantalla('screen-menu');
+    }
+
+    function mostrarMuchasGracias() {
+      usuarioActual = null;
+      inputLegajo.value = '';
+      inputClave.value = '';
+      showMsg('msg-login', '', '');
+
+      mostrarPantalla('screen-thanks');
+
+      let segundosRestantes = 5;
+      const countdownEl = document.getElementById('countdown');
+      countdownEl.textContent = segundosRestantes;
+
+      if (timerGracias) clearInterval(timerGracias);
+
+      timerGracias = setInterval(() => {
+        segundosRestantes--;
+        countdownEl.textContent = segundosRestantes;
+
+        if (segundosRestantes <= 0) {
+          clearInterval(timerGracias);
+          mostrarPantalla('screen-standby');
+        }
+      }, 1000);
+    }
+
+    function resetAtm() {
+      mostrarMuchasGracias();
+    }
+
+    function mostrarPantalla(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showMsg(containerId, text, type) {
+      const div = document.getElementById(containerId);
+      div.textContent = text;
+      div.className = `status-msg ${type}`;
+    }
+  </script>
+</body>
+</html>
